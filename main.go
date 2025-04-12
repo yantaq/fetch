@@ -8,7 +8,6 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -26,6 +25,7 @@ type Endpoint struct {
 type DomainStats struct {
 	Success int
 	Total   int
+	Latency time.Duration
 }
 
 var stats = make(map[string]*DomainStats)
@@ -49,11 +49,15 @@ func checkHealth(endpoint Endpoint) {
 		req.Header.Set(key, value)
 	}
 
+	start := time.Now()
 	resp, err := client.Do(req)
+	duration := time.Since(start).Milliseconds() // latency in ms
 	domain := extractDomain(endpoint.URL)
 
 	stats[domain].Total++
-	if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
+	stats[domain].Latency += duration
+
+	if err == nil && resp.StatusCode >= 200 && resp.StatusCode < 300 && duration <= 500 {
 		stats[domain].Success++
 	}
 }
@@ -89,11 +93,12 @@ func logResults() {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("Usage: go run main.go <config_file>")
-	}
+	// if len(os.Args) < 2 {
+	// 	log.Fatal("Usage: go run main.go <config_file>")
+	// }
 
-	filePath := os.Args[1]
+	// filePath := os.Args[1]
+	filePath := "./sample.yaml"
 	data, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		log.Fatal("Error reading file:", err)
